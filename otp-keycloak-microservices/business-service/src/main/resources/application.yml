@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: business-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5434/business_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/myrealm
+          jwk-set-uri: http://localhost:8180/realms/myrealm/protocol/openid-connect/certs
+
+# Identity Service URL for FeignClient
+identity-service:
+  url: http://localhost:8082
+
+# FeignClient configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: full
+
+server:
+  port: 8083
+
+logging:
+  level:
+    root: INFO
+    com.auth.business: DEBUG
+    org.springframework.security: DEBUG
+    com.auth.business.client: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

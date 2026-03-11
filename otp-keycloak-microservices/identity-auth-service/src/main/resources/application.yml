@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: identity-auth-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/auth_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/myrealm
+          jwk-set-uri: http://localhost:8180/realms/myrealm/protocol/openid-connect/certs
+
+keycloak:
+  server-url: http://localhost:8180
+  realm: myrealm
+  client-id: backend-service
+  client-secret: REPLACE_WITH_YOUR_CLIENT_SECRET
+  admin-username: admin
+  admin-password: admin
+
+otp:
+  expiry-minutes: 5
+  max-attempts: 3
+  length: 6
+
+server:
+  port: 8082
+
+logging:
+  level:
+    root: INFO
+    com.auth.identity: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
