@@ -25,17 +25,26 @@ spring:
           jwk-set-uri: http://localhost:8180/realms/myrealm/protocol/openid-connect/certs
 
 keycloak:
-  server-url: http://localhost:8180
-  realm: myrealm
-  client-id: backend-service
-  client-secret: REPLACE_WITH_YOUR_CLIENT_SECRET
-  admin-username: admin
-  admin-password: admin
+  server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8180}
+  realm: ${KEYCLOAK_REALM:myrealm}
+  client-id: ${KEYCLOAK_CLIENT_ID:backend-service}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
+  admin-username: ${KEYCLOAK_SERVICE_USERNAME}
+  admin-password: ${KEYCLOAK_SERVICE_PASSWORD}
 
 otp:
   expiry-minutes: 5
   max-attempts: 3
   length: 6
+
+mpin:
+  length: 4  # MPIN length (4-6 digits recommended)
+  min-length: 4
+  max-length: 6
+  session-expiry-days: 30  # MPIN session expires after 30 days (like bank apps)
+  max-attempts: 3  # Maximum failed MPIN attempts before blocking
+  encryption:
+    key: ${MPIN_ENCRYPTION_KEY}  # AES-256 encryption key from environment
 
 server:
   port: 8082

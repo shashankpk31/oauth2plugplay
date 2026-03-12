@@ -22,6 +22,7 @@ public class AuthService {
     private final OtpService otpService;
     private final KeycloakService keycloakService;
     private final UserService userService;
+    private final MpinService mpinService;
 
     public OtpResponse register(RegisterRequest request) {
         String identifier = request.getIdentifier();
@@ -88,6 +89,10 @@ public class AuthService {
 
         // Get token from Keycloak
         Map<String, Object> tokenData = keycloakService.getTokenForUser(identifier);
+
+        // Extend MPIN session if user has MPIN set
+        // This renews the MPIN validity after successful OTP login
+        mpinService.extendMpinSession(user.getId());
 
         // Build response
         return TokenResponse.builder()

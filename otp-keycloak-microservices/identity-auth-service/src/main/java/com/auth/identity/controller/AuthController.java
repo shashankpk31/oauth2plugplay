@@ -3,6 +3,7 @@ package com.auth.identity.controller;
 import com.auth.identity.dto.*;
 import com.auth.identity.model.User;
 import com.auth.identity.service.AuthService;
+import com.auth.identity.service.MpinService;
 import com.auth.identity.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserService userService;
+    private final MpinService mpinService;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<OtpResponse>> register(
@@ -98,6 +100,114 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(userService.toDto(user))
+        );
+    }
+
+    // ============== MPIN Endpoints ==============
+
+    /**
+     * Set or update MPIN (protected endpoint - requires valid JWT)
+     * User must be authenticated via OTP before setting MPIN
+     */
+    @PostMapping("/mpin/set")
+    public ResponseEntity<ApiResponse<String>> setMpin(
+            @Valid @RequestBody SetMpinRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        log.info("Set MPIN request received");
+
+        // Validate MPIN matches confirmation
+        if (!request.getMpin().equals(request.getConfirmMpin())) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.error("MPIN and Confirm MPIN do not match")
+            );
+        }
+
+        // Get user ID from JWT
+        String keycloakId = jwt.getSubject();
+        User user = userService.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Set MPIN
+        mpinService.setMpin(user.getId(), request.getMpin());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("MPIN set successfully", "MPIN has been configured for quick login")
+        );
+    }
+
+    /**
+     * Login with MPIN (public endpoint)
+     * Quick login using MPIN - returns JWT tokens if valid
+     */
+    @PostMapping("/mpin/login")
+    public ResponseEntity<ApiResponse<TokenResponse>> loginWithMpin(
+            @Valid @RequestBody MpinLoginRequest request) {
+        log.info("MPIN login request received for: {}", request.getIdentifier());
+
+        MpinService.MpinValidationResult result = mpinService.validateMpin(
+                request.getIdentifier(),
+                request.getMpin()
+        );
+
+        // Convert to TokenResponse
+        TokenResponse tokenResponse = TokenResponse.builder()
+                .accessToken((String) result.getTokens().get("access_token"))
+                .refreshToken((String) result.getTokens().get("refresh_token"))
+                .expiresIn((Integer) result.getTokens().get("expires_in"))
+                .tokenType((String) result.getTokens().get("token_type"))
+                .user(userService.toDto(result.getUser()))
+                .build();
+
+        return ResponseEntity.ok(
+                ApiResponse.success("MPIN authentication successful", tokenResponse)
+        );
+    }
+
+    /**
+     * Delete MPIN (protected endpoint)
+     * Remove MPIN for current user
+     */
+    @DeleteMapping("/mpin")
+    public ResponseEntity<ApiResponse<String>> deleteMpin(
+            @AuthenticationPrincipal Jwt jwt) {
+        log.info("Delete MPIN request received");
+
+        String keycloakId = jwt.getSubject();
+        User user = userService.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        mpinService.deleteMpin(user.getId());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("MPIN deleted successfully", "You will need to login with OTP")
+        );
+    }
+
+    /**
+     * Get MPIN status (protected endpoint)
+     * Check if MPIN is set and valid
+     */
+    @GetMapping("/mpin/status")
+    public ResponseEntity<ApiResponse<MpinStatusResponse>> getMpinStatus(
+            @AuthenticationPrincipal Jwt jwt) {
+        log.info("Get MPIN status request received");
+
+        String keycloakId = jwt.getSubject();
+        User user = userService.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        MpinService.MpinStatus status = mpinService.getMpinStatus(user.getId());
+
+        MpinStatusResponse response = MpinStatusResponse.builder()
+                .isSet(status.isSet())
+                .isValid(status.isValid())
+                .sessionExpiresAt(status.getSessionExpiresAt())
+                .failedAttempts(status.getFailedAttempts())
+                .lastUsedAt(status.getLastUsedAt())
+                .build();
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response)
         );
     }
 }

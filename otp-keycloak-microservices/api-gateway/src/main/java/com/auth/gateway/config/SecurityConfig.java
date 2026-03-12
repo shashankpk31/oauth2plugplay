@@ -2,29 +2,30 @@ package com.auth.gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebFluxSecurity
+@EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .authorizeExchange(exchanges -> exchanges
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
                 // Public endpoints - no authentication required
-                .pathMatchers(
+                .requestMatchers(
                     "/auth/register",
                     "/auth/otp/send",
                     "/auth/otp/verify",
                     "/auth/refresh",
+                    "/auth/mpin/login",
                     "/actuator/health"
                 ).permitAll()
                 // All other endpoints require authentication
-                .anyExchange().authenticated()
+                .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> {})
